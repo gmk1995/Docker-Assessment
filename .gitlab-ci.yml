@@ -1,0 +1,52 @@
+image:
+  name: docker:latest
+
+stages:
+- dockerimagebuild
+- dockerpush
+- dockercontainercreating
+- containerportchecking
+- cronjobscheduling
+
+dockerimagebuild:
+  stage: dockerimagebuild
+  script:
+  - docker build -t gmk1995/nginx-welcomepage:v1 .
+  tags:
+  - my-gitlab-runner
+
+dockerpush:
+  stage: dockerpush
+  script:
+  - echo ${DOCKERHUB_CREDENTIALS} | sudo docker login -u gmk1995 --password-stdin
+  - docker push gmk1995/nginx-welcomepage:v1
+  tags:
+  - my-gitlab-runner
+
+dockercontainercreating:
+  stage: dockercontainercreating
+  script:
+  - docker run -d --name nginx-welcomepage-container -p 80:80 -e NGINX_PORT=80 -v /tmp/sample.txt:/opt/sample.txt  gmk1995/nginx-welcomepage:v1
+  tags:
+  - my-gitlab-runner
+
+containerportchecking:
+  stage: containerportchecking
+  image:
+    name: ubuntu:latest
+  script:
+  - chmod 777 container_port_checking.sh
+  tags:
+  - my-gitlab-runner
+
+cronjobscheduling:
+  stage: cronjobscheduling
+  image:
+    name: ubuntu:latest
+  script:
+  - echo "*/5 * * * * $(which bash) $CI_PROJECT_DIR/container_port_checking.sh" > scheduler
+  - crontab scheduler
+  - crontab -l
+  tags:
+  - my-gitlab-runner
+
